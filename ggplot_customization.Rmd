@@ -1,0 +1,113 @@
+---
+title: "GGPlot Customization"
+author: Meghan R. Klasic, PhD Student, UC Davis Center for Environmental Policy and
+  Behavior
+date: "10/28/2018"
+output: html_document
+---
+
+
+This script runs through some customization ideas for ggplot using a simple dummy dataset.
+
+### Packages to Load
+```{r echo = T, message=FALSE}
+library(ggplot2)
+library(RColorBrewer) 
+library(reshape)
+library(dplyr)
+```
+
+## Reading in the Dummy Dataset
+```{r echo = T, tidy=TRUE, eval=TRUE}
+survey <- read.csv("/Users/meghanklasic/RFem/survey.csv")
+```
+
+```{r echo = T, echo=FALSE, eval=TRUE}
+survey <- read.csv("/Users/meghanklasic/RFem/survey.csv")
+print(survey)
+```
+
+## Setting up a Customized Theme
+Set up your theme at the beginning of your script- then if you are making a bunch of charts/figures for a single manuscript, you can use one word "My Theme" to apply the same theme throughout - saves a ton of time in this case, I took a base theme (theme_bw) and placed it into a function-- then using the "%+replace%" you can adjust aspects of the theme. The ggplot2 base themes are here: https://ggplot2.tidyverse.org/reference/ggtheme.html
+
+```{r}
+MyTheme <- function () { 
+  theme_bw(base_size=12, base_family="Avenir") %+replace% 
+    theme(
+      panel.background  = element_blank(),
+      plot.background = element_rect(fill="gray96", colour=NA), 
+      legend.background = element_rect(fill="transparent", colour=NA),
+      legend.key = element_rect(fill="transparent", colour=NA),
+      plot.title = element_text(color="black",face="plain",size=16,hjust=0),
+      axis.title = element_text(color="#666666", face = "plain", size = 12),
+      plot.subtitle = element_text(color= "#666666", size = 12, hjust = 0)
+    )
+}
+```
+
+
+## Setting up Colors
+
+When making a ggplot, you can just add a code line --> + colScale +
+brewer.pal colors sets can be viewed here: http://www.datavis.ca/sasmac/brewerpal.html
+```{r}
+#this 'saves' 7 color values from Color Brewer Set 3 to the object, Thematic Colors
+ThematicColors <- brewer.pal(7, "Set3") 
+#Assigns factor levels to the 'Org' column and aligns them to the color names selected
+names(ThematicColors) <- levels(survey$Org) 
+#Creates object that holds the color/Org combinations
+colScale <- scale_fill_manual(name = "Org", values = ThematicColors) 
+```
+
+## Setting up Data 
+Summarizing the total number publications published by Org
+```{r}
+survey1 <-survey%>%
+  group_by(Org)%>%
+  summarise(Sum_grp = sum(Pub_Papers))
+```
+
+## Putting it all Together
+
+* x-axis pulls the values from the 'Org' column and orders them based on descending number of publications
+* y-axis is the total number of publications (created with grouping code)
+* fill -> fills the bars in the chart based on the 'Org' categories and the color theme set up
+* legend.position = none -> removes the legend from the chart
+* scale_y_continuous -> sets the min and max values for the y axis
+* colScale -> sets up the coloration according to the code
+* geom_text -> vjust is the vertical adjustment of the data labels
+
+```{r, eval=FALSE}
+Chart.plot <- ggplot(survey1, aes(reorder(Org, -Sum_grp), Sum_grp, width = 0.8, fill=Org))+
+  geom_bar(position = position_dodge(width = 0.8), color="black", size=0.2, stat = "identity", width = 0.9)+
+  MyTheme()+
+  labs(title = "Number of Papers that Orgs Publish", subtitle = "This is a subtitle (n = 10)")+
+  ylab("Publications")+
+  xlab("Orgs")+
+  theme(legend.position = "none")+
+  scale_y_continuous(limits = c(0,100))+
+  colScale+
+  geom_text(aes(label = survey1$Sum_grp, vjust = -0.5));Chart.plot
+```
+
+## The Resulting Plot
+```{r, echo=FALSE}
+Chart.plot <- ggplot(survey1, aes(reorder(Org, -Sum_grp), Sum_grp, width = 0.8, fill=Org))+
+  geom_bar(position = position_dodge(width = 0.8), color="black", size=0.2, stat = "identity", width = 0.9)+
+  MyTheme()+
+  labs(title = "Number of Papers that Orgs Publish", subtitle = "This is a subtitle (n = 10)")+
+  ylab("Publications")+
+  xlab("Orgs")+
+  theme(legend.position = "none")+
+  scale_y_continuous(limits = c(0,100))+
+  colScale+
+  geom_text(aes(label = survey1$Sum_grp, vjust = -0.5));Chart.plot
+```
+
+
+## Saving the Plot
+The below code takes the existing plot and saves it with a specified title and width/height.
+
+```{r}
+ggsave("Papers_Published_by_Organization.jpeg", width = 11, height = 8.6) 
+```
